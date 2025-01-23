@@ -1,0 +1,305 @@
+{
+    "projectRules": {
+      "techStack": {
+        "frontend": {
+          "framework": {
+            "name": "Next.js",
+            "version": "14.x",
+            "config": {
+              "appRouter": true,
+              "typescript": true,
+              "eslint": true,
+              "tailwind": true,
+              "src": true
+            },
+            "requirements": {
+              "react": "18.x",
+              "typescript": "5.x",
+              "node": ">=18.17.0"
+            }
+          },
+          "styling": {
+            "tailwind": {
+              "version": "3.x",
+              "configuration": {
+                "customTheme": true,
+                "darkMode": "class",
+                "plugins": [
+                  "@tailwindcss/forms",
+                  "@tailwindcss/typography"
+                ]
+              }
+            },
+            "cssModules": {
+              "required": true,
+              "naming": "[name]_[local]_[hash:base64:5]"
+            }
+          }
+        },
+        "authentication": {
+          "provider": "NextAuth.js",
+          "version": "5.x",
+          "config": {
+            "jwt": true,
+            "session": {
+              "strategy": "jwt",
+              "maxAge": 2592000
+            },
+            "providers": [
+              "credentials",
+              "google",
+              "github"
+            ],
+            "customPages": {
+              "signIn": "/auth/signin",
+              "error": "/auth/error"
+            }
+          }
+        },
+        "backend": {
+          "runtime": {
+            "name": "Node.js",
+            "version": "18.x LTS",
+            "engine": {
+              "node": ">=18.17.0",
+              "npm": ">=9.0.0"
+            }
+          },
+          "database": {
+            "primary": {
+              "type": "MongoDB Atlas",
+              "version": "6.x",
+              "odm": {
+                "name": "Mongoose",
+                "version": "7.x"
+              },
+              "config": {
+                "poolSize": 10,
+                "retryWrites": true,
+                "replicaSet": true,
+                "ssl": true,
+                "authSource": "admin",
+                "retryable": true,
+                "w": "majority",
+                "wtimeoutMS": 2500
+              },
+              "atlas": {
+                "cluster": {
+                  "tier": "M0",
+                  "region": "EU_CENTRAL_1",
+                  "backupEnabled": true,
+                  "biConnector": false
+                },
+                "networking": {
+                  "ipAccessList": true,
+                  "privateEndpoint": false
+                },
+                "security": {
+                  "requireSSL": true,
+                  "deleteProtection": true,
+                  "encryptionAtRest": true
+                },
+                "monitoring": {
+                  "alerting": true,
+                  "metrics": true,
+                  "realmSync": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "monitoring": {
+        "required": {
+          "error": "Sentry",
+          "performance": "Datadog",
+          "logging": "Winston",
+          "analytics": "Vercel Analytics"
+        },
+        "alerts": {
+          "error": true,
+          "performance": true,
+          "security": true
+        }
+      },
+      "docker": {
+        "version": "24.x",
+        "required": true,
+        "files": {
+          "required": [
+            "docker/Dockerfile",
+            "docker/docker-compose.yml",
+            "docker/docker-compose.override.yml",
+            "docker/docker-compose.prod.yml",
+            "docker/docker-compose.test.yml",
+            "docker/.dockerignore"
+          ]
+        },
+        "environments": {
+          "development": {
+            "file": ".env.development",
+            "compose": "docker-compose.override.yml",
+            "ports": {
+              "app": 3000,
+              "api": 4000,
+              "mongodb": 27017,
+              "redis": 6379
+            }
+          },
+          "production": {
+            "file": ".env.production",
+            "compose": "docker-compose.prod.yml",
+            "ports": {
+              "app": 3000,
+              "api": 4000
+            }
+          },
+          "test": {
+            "file": ".env.test",
+            "compose": "docker-compose.test.yml"
+          }
+        },
+        "services": {
+          "app": {
+            "build": {
+              "context": ".",
+              "dockerfile": "docker/Dockerfile",
+              "target": "production"
+            },
+            "image": "gaiathon25-hub/app",
+            "restart": "unless-stopped",
+            "healthcheck": {
+              "interval": "30s",
+              "timeout": "10s",
+              "retries": 3
+            }
+          }
+        }
+      },
+      "development": {
+        "environment": {
+          "nodeVersion": "18.x",
+          "packageManager": "npm",
+          "required": [
+            "typescript",
+            "eslint",
+            "prettier",
+            "husky"
+          ]
+        },
+        "typescript": {
+          "strict": true,
+          "config": {
+            "target": "ES2022",
+            "lib": ["dom", "dom.iterable", "esnext"],
+            "allowJs": true,
+            "skipLibCheck": true,
+            "strict": true,
+            "forceConsistentCasingInFileNames": true,
+            "noEmit": true,
+            "incremental": true,
+            "esModuleInterop": true,
+            "module": "esnext",
+            "moduleResolution": "bundler",
+            "resolveJsonModule": true,
+            "isolatedModules": true,
+            "jsx": "preserve"
+          }
+        }
+      },
+      "fileStructure": {
+        "rootDirectories": [
+          ".github",
+          "public",
+          "src",
+          "docker",
+          "scripts",
+          "tests"
+        ],
+        "srcStructure": {
+          "app": {
+            "required": true,
+            "structure": {
+              "[locale]": {
+                "required": true,
+                "directories": [
+                  "(auth)",
+                  "(dashboard)",
+                  "(admin)",
+                  "(marketing)",
+                  "(profile)"
+                ]
+              }
+            }
+          },
+          "components": {
+            "required": true,
+            "categories": [
+              "common",
+              "layout",
+              "forms",
+              "dashboard",
+              "admin",
+              "profile",
+              "auth",
+              "marketing",
+              "navigation",
+              "footer"
+            ],
+            "naming": {
+              "pattern": "^[A-Z][a-zA-Z0-9]+$",
+              "test": "${name}.test.tsx"
+            }
+          },
+          "styles": {
+            "required": true,
+            "files": [
+              "globals.css",
+              "variables.css"
+            ]
+          }
+        },
+        "publicStructure": {
+          "required": true,
+          "directories": {
+            "images": {
+              "required": true,
+              "formats": ["svg", "png", "ico"]
+            },
+            "fonts": {
+              "required": true
+            }
+          }
+        }
+      },
+      "security": {
+        "authentication": {
+          "required": [
+            "password-hashing",
+            "jwt-tokens",
+            "refresh-tokens",
+            "csrf-protection",
+            "rate-limiting"
+          ],
+          "session": {
+            "duration": 86400,
+            "secure": true,
+            "httpOnly": true
+          }
+        },
+        "headers": {
+          "required": [
+            "helmet",
+            "cors",
+            "csp",
+            "xss-protection"
+          ],
+          "cors": {
+            "origins": ["allowed-domains.txt"],
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "credentials": true
+          }
+        }
+      }
+    }
+  }
