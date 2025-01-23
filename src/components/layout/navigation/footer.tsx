@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { useTheme } from 'next-themes';
+import { Logo } from '@/components/ui/logo';
 
 const navigation = {
   main: [
@@ -68,11 +71,9 @@ export function Footer() {
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
             {/* Brand */}
             <div className="space-y-8">
-              <Link href="/" className="flex items-center space-x-2">
-                <span className="text-2xl font-bold text-white">GAIAthon25</span>
-              </Link>
+              <Logo />
               <p className="text-sm leading-6 text-primary-100">
-                Join the world&apos;s premier hackathon for sustainable technology solutions.
+                Join the world's premier hackathon for sustainable technology solutions.
                 Transform ideas into impact.
               </p>
               <div className="flex space-x-6">

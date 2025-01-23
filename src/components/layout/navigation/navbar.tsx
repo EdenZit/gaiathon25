@@ -1,15 +1,17 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { Container } from '@/components/ui/container';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/ui/logo';
 
 // Navigation items
 const navigation = [
   { name: 'Home', href: '/' },
   { name: 'About', href: '/about' },
   { name: 'Schedule', href: '/schedule' },
-  { name: 'Resources', href: '/resources' },
 ];
 
 const resources = [
@@ -19,7 +21,29 @@ const resources = [
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <nav className="sticky top-0 z-50 bg-primary-500 shadow-md">
+        <Container>
+          <div className="relative flex h-16 items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center">
+              <Logo />
+            </div>
+          </div>
+        </Container>
+      </nav>
+    );
+  }
 
   return (
     <nav className="sticky top-0 z-50 bg-primary-500 shadow-md">
@@ -27,9 +51,7 @@ export function Navbar() {
         <div className="relative flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl font-bold text-white">GAIAthon25</span>
-            </Link>
+            <Logo />
           </div>
 
           {/* Desktop Navigation */}
@@ -69,6 +91,22 @@ export function Navbar() {
 
             {/* Auth Buttons */}
             <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="text-white hover:bg-primary-600"
+              >
+                {theme === 'dark' ? (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
+              </Button>
               <Button variant="outline" className="text-white border-white hover:bg-white hover:text-primary-500">
                 Sign In
               </Button>
@@ -125,6 +163,22 @@ export function Navbar() {
               </a>
             ))}
             <div className="mt-4 space-y-2 px-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="w-full text-white hover:bg-primary-600"
+              >
+                {theme === 'dark' ? (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
+              </Button>
               <Button variant="outline" className="w-full text-white border-white hover:bg-white hover:text-primary-500">
                 Sign In
               </Button>

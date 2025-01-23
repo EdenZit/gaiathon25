@@ -1,59 +1,71 @@
 import type { Config } from "tailwindcss";
-import forms from '@tailwindcss/forms';
-import typography from '@tailwindcss/typography';
 
 const config: Config = {
+  darkMode: ['class'],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  darkMode: 'class',
   theme: {
+    container: {
+      center: true,
+      padding: '2rem',
+      screens: {
+        '2xl': '1400px',
+      },
+    },
     extend: {
       colors: {
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#0A2647',
-          50: '#E6EBF0',
-          100: '#CCD7E1',
-          200: '#99AFC3',
-          300: '#6687A5',
-          400: '#335F87',
-          500: '#0A2647',
-          600: '#081E39',
-          700: '#06172B',
-          800: '#040F1D',
-          900: '#02080F',
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+          50: 'hsl(var(--primary-50))',
+          100: 'hsl(var(--primary-100))',
+          500: 'hsl(var(--primary-500))',
+          600: 'hsl(var(--primary-600))',
+          900: 'hsl(var(--primary-900))',
         },
         secondary: {
-          DEFAULT: '#205295',
-          50: '#EDF1F7',
-          100: '#DBE3EF',
-          200: '#B7C7DF',
-          300: '#93ABCF',
-          400: '#6F8FBF',
-          500: '#205295',
-          600: '#1A4277',
-          700: '#143159',
-          800: '#0E213B',
-          900: '#08101D',
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: '#2C74B3',
-          50: '#EEF3F8',
-          100: '#DDE7F1',
-          200: '#BBCFE3',
-          300: '#99B7D5',
-          400: '#779FC7',
-          500: '#2C74B3',
-          600: '#245D8F',
-          700: '#1B466B',
-          800: '#122E47',
-          900: '#091723',
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+          100: 'hsl(var(--accent-100))',
+          500: 'hsl(var(--accent-500))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
       },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+      },
       fontFamily: {
-        sans: ['var(--font-inter)'],
+        sans: ['var(--font-geist-sans)'],
+        mono: ['var(--font-geist-mono)'],
       },
       spacing: {
         '1': '0.25rem',   // 4px
@@ -70,35 +82,35 @@ const config: Config = {
         '24': '6rem',     // 96px
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-up': 'slideUp 0.5s ease-out',
-        'slide-down': 'slideDown 0.5s ease-out',
-        'scale-in': 'scaleIn 0.3s ease-out',
-        'countdown': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fade-in 0.5s ease-out',
+        'slide-up': 'slide-up 0.5s ease-out',
+        'scale-in': 'scale-in 0.5s ease-out',
+        'countdown': 'countdown 1s ease-in-out infinite',
       },
       keyframes: {
-        fadeIn: {
+        'fade-in': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
-        slideUp: {
+        'slide-up': {
           '0%': { transform: 'translateY(10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
-        slideDown: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        scaleIn: {
+        'scale-in': {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        countdown: {
+          '0%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.05)' },
+          '100%': { transform: 'scale(1)' },
         },
       },
     },
   },
   plugins: [
-    forms,
-    typography,
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
   ],
 } satisfies Config;
 

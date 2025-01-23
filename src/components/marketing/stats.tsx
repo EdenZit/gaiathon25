@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import { Section } from '@/components/ui/container';
 import { H2, P } from '@/components/ui/typography';

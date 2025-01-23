@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { Container } from '@/components/ui/container';
 import { H1, Lead } from '@/components/ui/typography';

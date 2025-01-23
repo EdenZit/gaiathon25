@@ -65,17 +65,7 @@ export async function middleware(request: NextRequest) {
   // Content Security Policy
   response.headers.set(
     'Content-Security-Policy',
-    `default-src 'self';
-     script-src 'self' 'unsafe-eval' 'unsafe-inline';
-     style-src 'self' 'unsafe-inline';
-     img-src 'self' blob: data:;
-     font-src 'self';
-     object-src 'none';
-     base-uri 'self';
-     form-action 'self';
-     frame-ancestors 'none';
-     block-all-mixed-content;
-     upgrade-insecure-requests;`
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; block-all-mixed-content; upgrade-insecure-requests"
   );
 
   return response;
