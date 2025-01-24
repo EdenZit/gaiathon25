@@ -1,86 +1,89 @@
-import { type AuthConfig } from '@auth/core';
+import NextAuth from 'next-auth';
 import type { Session } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
-import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import GitHub from 'next-auth/providers/github';
-import { type NextAuthConfig } from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
+import type { UserDocument } from '@/models/user.model';
 
 declare module 'next-auth' {
   interface Session {
     user: {
-      email?: string | null;
-      name?: string | null;
-      role?: string;
-    };
+      id: string;
+      role: string;
+      email: string;
+      name: string;
+      image?: string;
+    }
   }
 
-  interface User {
-    role?: string;
-  }
+  interface User extends UserDocument {}
+}
 
+declare module 'next-auth/jwt' {
   interface JWT {
-    role?: string;
+    id: string;
+    role: string;
   }
 }
 
-export const authConfig = {
+const authConfig = {
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       authorization: {
         params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code"
+          prompt: 'consent',
+          access_type: 'offline',
+          response_type: 'code'
         }
       }
     }),
     GitHub({
-      clientId: process.env.GITHUB_ID ?? '',
-      clientSecret: process.env.GITHUB_SECRET ?? '',
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET
     }),
     Credentials({
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
-        
-        // Add your authentication logic here
-        // For now, return a mock user
-        return {
-          id: '1',
-          email: credentials.email,
-          name: 'Test User'
-        };
+
+        try {
+          // Implement your credential validation here
+          // For now, we'll return null
+          return null;
+        } catch (error) {
+          return null;
+        }
       }
     })
   ],
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60 // 30 days
-  },
-  pages: {
-    signIn: '/auth/signin',
-    error: '/auth/error'
-  },
   callbacks: {
-    jwt({ token, user }: { token: JWT; user: User | null }) {
+    async jwt({ token, user }: { token: JWT; user: UserDocument | null }) {
       if (user) {
+        token.id = user._id.toString();
         token.role = user.role;
       }
       return token;
     },
-    session({ session, token }: { session: Session; token: JWT }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
+        session.user.id = token.id;
         session.user.role = token.role;
       }
       return session;
     }
+  },
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error'
   }
-} satisfies AuthConfig; 
+};
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig); 

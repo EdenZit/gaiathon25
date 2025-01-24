@@ -1,147 +1,80 @@
-import mongoose, { Document, Model, Schema } from 'mongoose';
+import { Schema, model, Document, Model, Types } from 'mongoose';
+import bcrypt from 'bcryptjs';
 
-export interface UserActivity {
-  type: 'LOGIN' | 'PROFILE_UPDATE' | 'PASSWORD_CHANGE' | 'TWO_FACTOR_UPDATE';
-  timestamp: Date;
-  ipAddress?: string;
-  userAgent?: string;
-}
-
-export interface User extends Document {
+export interface IUser {
   email: string;
   password: string;
   name: string;
-  role: 'USER' | 'ADMIN';
-  twoFactorEnabled: boolean;
-  profile: {
-    avatar?: string;
-    bio?: string;
-    location?: string;
-    website?: string;
-    socialLinks?: {
-      twitter?: string;
-      github?: string;
-      linkedin?: string;
-    };
-  };
-  status: {
-    isVerified: boolean;
-    verificationToken?: string;
-    verificationExpires?: Date;
-    resetPasswordToken?: string;
-    resetPasswordExpires?: Date;
-    lastActive?: Date;
-    lastLogin?: Date;
-  };
-  activityLog: UserActivity[];
+  role: 'USER' | 'ADMIN' | 'MODERATOR';
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
+  image?: string;
+  emailVerified?: Date;
+  lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const userSchema = new Schema<User>(
+export interface IUserMethods {
+  comparePassword(password: string): Promise<boolean>;
+  generateAuthToken(): string;
+}
+
+export type UserDocument = Document<Types.ObjectId, {}, IUser> & 
+  IUser & 
+  IUserMethods & {
+    _id: Types.ObjectId;
+  };
+
+export type UserModel = Model<IUser, {}, IUserMethods>;
+
+const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
     email: {
       type: String,
       required: true,
       unique: true,
-      lowercase: true,
       trim: true,
+      lowercase: true
     },
     password: {
       type: String,
       required: true,
-      minlength: 6,
+      minlength: 8
     },
     name: {
       type: String,
       required: true,
-      trim: true,
-      minlength: 2,
+      trim: true
     },
     role: {
       type: String,
-      enum: ['USER', 'ADMIN'],
-      default: 'USER',
-    },
-    twoFactorEnabled: {
-      type: Boolean,
-      default: false,
-    },
-    profile: {
-      avatar: String,
-      bio: {
-        type: String,
-        maxlength: 500,
-      },
-      location: String,
-      website: String,
-      socialLinks: {
-        twitter: String,
-        github: String,
-        linkedin: String,
-      },
+      enum: ['USER', 'ADMIN', 'MODERATOR'],
+      default: 'USER'
     },
     status: {
-      isVerified: {
-        type: Boolean,
-        default: false,
-      },
-      verificationToken: String,
-      verificationExpires: Date,
-      resetPasswordToken: String,
-      resetPasswordExpires: Date,
-      lastActive: Date,
-      lastLogin: Date,
+      type: String,
+      enum: ['ACTIVE', 'INACTIVE', 'PENDING'],
+      default: 'PENDING'
     },
-    activityLog: [{
-      type: {
-        type: String,
-        required: true,
-        enum: ['LOGIN', 'PROFILE_UPDATE', 'PASSWORD_CHANGE', 'TWO_FACTOR_UPDATE'],
-      },
-      timestamp: {
-        type: Date,
-        default: Date.now,
-      },
-      ipAddress: String,
-      userAgent: String,
-    }],
+    image: String,
+    emailVerified: Date,
+    lastLogin: Date
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
-// Add indexes
-userSchema.index({ email: 1 });
-userSchema.index({ 'status.verificationToken': 1 });
-userSchema.index({ 'status.resetPasswordToken': 1 });
-
-// Add instance methods
-userSchema.methods.toJSON = function() {
-  const obj = this.toObject();
-  delete obj.password;
-  delete obj.status.verificationToken;
-  delete obj.status.resetPasswordToken;
-  return obj;
+userSchema.methods.comparePassword = async function(password: string): Promise<boolean> {
+  return bcrypt.compare(password, this.password);
 };
 
-// Add a method to log user activity
-userSchema.methods.logActivity = function(
-  activity: Omit<UserActivity, 'timestamp'>
-) {
-  this.activityLog.push({
-    ...activity,
-    timestamp: new Date(),
-  });
-  this.status.lastActive = new Date();
-  return this.save();
-};
+userSchema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
+});
 
-// Update last active timestamp
-userSchema.methods.updateLastActive = function() {
-  this.status.lastActive = new Date();
-  return this.save();
-};
-
-export const UserModel: Model<User> = mongoose.models.User || mongoose.model<User>('User', userSchema); 
+export const User = (model<IUser, UserModel>('User', userSchema) as UserModel) || 
+  model<IUser, UserModel>('User', userSchema); 
