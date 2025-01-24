@@ -1,20 +1,19 @@
-import { cn } from '@/lib/utils';
-import { ElementType } from 'react';
+'use client';
 
-interface ContainerProps<T extends ElementType = 'div'> {
+import { cn } from '@/lib/utils';
+
+interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
-  as?: T;
 }
 
-export function Container<T extends ElementType = 'div'>({
+export function Container({
   children,
   className,
-  as: Component = 'div' as T,
   ...props
-}: ContainerProps<T> & Omit<React.ComponentPropsWithoutRef<T>, keyof ContainerProps<T>>) {
+}: ContainerProps) {
   return (
-    <Component
+    <div
       className={cn(
         'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8',
         className
@@ -22,7 +21,7 @@ export function Container<T extends ElementType = 'div'>({
       {...props}
     >
       {children}
-    </Component>
+    </div>
   );
 }
 
@@ -33,10 +32,10 @@ export function Section({
 }: React.HTMLAttributes<HTMLElement>) {
   return (
     <section
-      className={cn('py-16 md:py-24', className)}
+      className={cn('py-16 md:py-20 lg:py-32', className)}
       {...props}
     >
-      <Container>{children}</Container>
+      {children}
     </section>
   );
 } 

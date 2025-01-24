@@ -107,12 +107,16 @@ export function Navbar() {
                   </svg>
                 )}
               </Button>
-              <Button variant="outline" className="text-white border-white hover:bg-white hover:text-primary-500">
-                Sign In
-              </Button>
-              <Button className="bg-white text-primary-500 hover:bg-primary-100">
-                Register
-              </Button>
+              <Link href="/auth/signin">
+                <Button variant="outline" className="text-white border-white hover:bg-white hover:text-primary-500">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/auth/register">
+                <Button className="bg-white text-primary-500 hover:bg-primary-100">
+                  Register
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -179,12 +183,16 @@ export function Navbar() {
                   </svg>
                 )}
               </Button>
-              <Button variant="outline" className="w-full text-white border-white hover:bg-white hover:text-primary-500">
-                Sign In
-              </Button>
-              <Button className="w-full bg-white text-primary-500 hover:bg-primary-100">
-                Register
-              </Button>
+              <Link href="/auth/signin">
+                <Button variant="outline" className="w-full text-white border-white hover:bg-white hover:text-primary-500">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/auth/register">
+                <Button className="w-full bg-white text-primary-500 hover:bg-primary-100">
+                  Register
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

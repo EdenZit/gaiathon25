@@ -109,6 +109,21 @@
         }
       }
     },
+    "stateManagement": {
+      "global": {
+        "tool": "zustand",
+        "version": "4.x",
+        "persist": true
+      },
+      "server": {
+        "tool": "react-query",
+        "version": "5.x",
+        "config": {
+          "staleTime": 5000,
+          "cacheTime": 300000
+        }
+      }
+    },
     "performance": {
       "metrics": {
         "frontend": {
@@ -116,6 +131,10 @@
           "lcp": "< 2.5s",
           "fid": "< 100ms",
           "cls": "< 0.1"
+        },
+        "backend": {
+          "responseTime": "< 200ms",
+          "errorRate": "< 0.1%"
         }
       },
       "optimization": {
@@ -208,6 +227,20 @@
           "husky"
         ]
       },
+      "linting": {
+        "eslint": {
+          "extends": [
+            "next/core-web-vitals",
+            "prettier"
+          ],
+          "rules": {
+            "react-hooks/rules-of-hooks": "error",
+            "react-hooks/exhaustive-deps": "warn",
+            "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/explicit-function-return-type": "warn"
+          }
+        }
+      },
       "typescript": {
         "strict": true,
         "config": {
@@ -235,6 +268,13 @@
           "branches": 80,
           "functions": 80,
           "lines": 80
+        },
+        "config": {
+          "setupFiles": ["jest.setup.js"],
+          "testEnvironment": "jsdom",
+          "moduleNameMapper": {
+            "^@/(.*)$": "<rootDir>/src/$1"
+          }
         }
       }
     },
@@ -251,15 +291,11 @@
         "app": {
           "required": true,
           "structure": {
-            "[locale]": {
-              "required": true,
-              "directories": [
-                "(auth)",
-                "(dashboard)",
-                "(admin)",
-                "(marketing)",
-                "(profile)"
-              ]
+            "dashboard": {
+              "required": true
+            },
+            "teams": {
+              "required": true
             }
           }
         },
@@ -275,11 +311,29 @@
             "auth",
             "marketing",
             "navigation",
-            "footer"
+            "footer",
+            "teams",
+            "projects",
+            "calendar",
+            "tracking"
           ],
           "naming": {
             "pattern": "^[A-Z][a-zA-Z0-9]+$",
             "test": "${name}.test.tsx"
+          }
+        },
+        "hooks": {
+          "required": true,
+          "naming": {
+            "pattern": "^use[A-Z][a-zA-Z0-9]+$",
+            "extension": ".ts"
+          }
+        },
+        "stores": {
+          "required": true,
+          "naming": {
+            "pattern": "^use[A-Z][a-zA-Z0-9]+Store$",
+            "extension": ".ts"
           }
         },
         "styles": {
@@ -288,6 +342,13 @@
             "globals.css",
             "variables.css"
           ]
+        },
+        "types": {
+          "required": true,
+          "naming": {
+            "pattern": "^[A-Z][a-zA-Z0-9]+$",
+            "extension": ".ts"
+          }
         }
       },
       "publicStructure": {
@@ -310,7 +371,9 @@
           "jwt-tokens",
           "refresh-tokens",
           "csrf-protection",
-          "rate-limiting"
+          "rate-limiting",
+          "role-based-access",
+          "permission-management"
         ],
         "session": {
           "duration": 86400,
