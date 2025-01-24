@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { Team, TeamModel, TeamMember } from '@/models/team.model';
-import { User } from '@/models/user.model';
+import { TeamModel, TeamDocument, TeamMember } from '@/models/team.model';
+import { Types } from 'mongoose';
 
 // Validation schemas
 export const createTeamSchema = z.object({
@@ -26,11 +26,11 @@ export class TeamService {
   static async createTeam(
     leaderId: string,
     data: CreateTeamInput
-  ): Promise<Team> {
-    const team = new TeamModel({
+  ): Promise<TeamDocument> {
+    const team = await new TeamModel({
       ...data,
       members: [{
-        user: leaderId,
+        user: new Types.ObjectId(leaderId),
         role: 'LEADER',
         joinedAt: new Date(),
         status: 'ACTIVE'
@@ -39,44 +39,46 @@ export class TeamService {
         {
           type: 'STORAGE',
           allocated: 5 * 1024 * 1024 * 1024, // 5GB
-          used: 0
+          used: 0,
+          lastUpdated: new Date()
         },
         {
           type: 'COMPUTE',
           allocated: 100,
-          used: 0
+          used: 0,
+          lastUpdated: new Date()
         },
         {
           type: 'API_CALLS',
           allocated: 10000,
-          used: 0
+          used: 0,
+          lastUpdated: new Date()
         }
       ]
-    });
+    }).save() as Promise<TeamDocument>;
 
-    await team.save();
     return team;
   }
 
-  static async getTeam(teamId: string): Promise<Team | null> {
-    return TeamModel.findById(teamId).populate('members.user', 'name email');
+  static async getTeam(teamId: string): Promise<TeamDocument | null> {
+    return TeamModel.findById(teamId).populate('members.user', 'name email').exec() as Promise<TeamDocument | null>;
   }
 
-  static async getTeamByName(name: string): Promise<Team | null> {
-    return TeamModel.findOne({ name }).populate('members.user', 'name email');
+  static async getTeamByName(name: string): Promise<TeamDocument | null> {
+    return TeamModel.findOne({ name }).populate('members.user', 'name email').exec() as Promise<TeamDocument | null>;
   }
 
   static async updateTeam(
     teamId: string,
     userId: string,
     data: UpdateTeamInput
-  ): Promise<Team> {
+  ): Promise<TeamDocument> {
     const team = await TeamModel.findById(teamId);
     if (!team) {
       throw new Error('Team not found');
     }
 
-    const member = team.members.find((m: TeamMember) => 
+    const member = team.members.find(m => 
       m.user.toString() === userId && 
       m.status === 'ACTIVE' && 
       m.role === 'LEADER'
@@ -91,7 +93,7 @@ export class TeamService {
 
     await team.logActivity({
       type: 'SETTINGS_UPDATED',
-      user: userId,
+      user: new Types.ObjectId(userId),
       details: data
     });
 
@@ -103,13 +105,13 @@ export class TeamService {
     leaderId: string,
     userId: string,
     role: 'LEADER' | 'MEMBER' = 'MEMBER'
-  ): Promise<Team> {
+  ): Promise<TeamDocument> {
     const team = await TeamModel.findById(teamId);
     if (!team) {
       throw new Error('Team not found');
     }
 
-    const leader = team.members.find((m: TeamMember) => 
+    const leader = team.members.find(m => 
       m.user.toString() === leaderId && 
       m.status === 'ACTIVE' && 
       m.role === 'LEADER'
@@ -126,13 +128,13 @@ export class TeamService {
     teamId: string,
     leaderId: string,
     userId: string
-  ): Promise<Team> {
+  ): Promise<TeamDocument> {
     const team = await TeamModel.findById(teamId);
     if (!team) {
       throw new Error('Team not found');
     }
 
-    const leader = team.members.find((m: TeamMember) => 
+    const leader = team.members.find(m => 
       m.user.toString() === leaderId && 
       m.status === 'ACTIVE' && 
       m.role === 'LEADER'
@@ -150,13 +152,13 @@ export class TeamService {
     leaderId: string,
     userId: string,
     newRole: 'LEADER' | 'MEMBER'
-  ): Promise<Team> {
+  ): Promise<TeamDocument> {
     const team = await TeamModel.findById(teamId);
     if (!team) {
       throw new Error('Team not found');
     }
 
-    const leader = team.members.find((m: TeamMember) => 
+    const leader = team.members.find(m => 
       m.user.toString() === leaderId && 
       m.status === 'ACTIVE' && 
       m.role === 'LEADER'
@@ -169,11 +171,11 @@ export class TeamService {
     return team.updateMemberRole(userId, newRole);
   }
 
-  static async getUserTeams(userId: string): Promise<Team[]> {
+  static async getUserTeams(userId: string): Promise<TeamDocument[]> {
     return TeamModel.find({
       'members': {
         $elemMatch: {
-          user: userId,
+          user: new Types.ObjectId(userId),
           status: 'ACTIVE'
         }
       }
@@ -187,7 +189,7 @@ export class TeamService {
       limit?: number;
       offset?: number;
     } = {}
-  ): Promise<{ teams: Team[]; total: number }> {
+  ): Promise<{ teams: TeamDocument[]; total: number }> {
     const { visibility = 'PUBLIC', limit = 10, offset = 0 } = options;
 
     const filter = {
@@ -215,13 +217,13 @@ export class TeamService {
     leaderId: string,
     type: 'STORAGE' | 'COMPUTE' | 'API_CALLS',
     used: number
-  ): Promise<Team> {
+  ): Promise<TeamDocument> {
     const team = await TeamModel.findById(teamId);
     if (!team) {
       throw new Error('Team not found');
     }
 
-    const leader = team.members.find((m: TeamMember) => 
+    const leader = team.members.find(m => 
       m.user.toString() === leaderId && 
       m.status === 'ACTIVE' && 
       m.role === 'LEADER'
@@ -238,13 +240,13 @@ export class TeamService {
     teamId: string,
     userId: string,
     limit: number = 10
-  ): Promise<Team['activityLog']> {
+  ): Promise<TeamDocument['activityLog']> {
     const team = await TeamModel.findById(teamId);
     if (!team) {
       throw new Error('Team not found');
     }
 
-    const member = team.members.find((m: TeamMember) => 
+    const member = team.members.find(m => 
       m.user.toString() === userId && 
       m.status === 'ACTIVE'
     );

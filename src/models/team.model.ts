@@ -1,8 +1,8 @@
-import mongoose, { Document, Model, Schema } from 'mongoose';
-import { User } from './user.model';
+import mongoose, { Document, Model, Schema, Types } from 'mongoose';
+import { type User } from './user.model';
 
 export interface TeamMember {
-  user: User['_id'];
+  user: Types.ObjectId;
   role: 'LEADER' | 'MEMBER';
   joinedAt: Date;
   status: 'ACTIVE' | 'INACTIVE';
@@ -17,12 +17,12 @@ export interface TeamResource {
 
 export interface TeamActivity {
   type: 'MEMBER_JOINED' | 'MEMBER_LEFT' | 'ROLE_CHANGED' | 'RESOURCE_UPDATED' | 'SETTINGS_UPDATED';
-  user: User['_id'];
+  user: Types.ObjectId;
   timestamp: Date;
   details: Record<string, any>;
 }
 
-export interface Team extends Document {
+export interface ITeam {
   name: string;
   description?: string;
   members: TeamMember[];
@@ -41,18 +41,31 @@ export interface Team extends Document {
   activityLog: TeamActivity[];
   createdAt: Date;
   updatedAt: Date;
-  // Virtual fields
-  memberCount: number;
-  isAtCapacity: boolean;
-  // Methods
-  addMember(userId: string, role?: 'LEADER' | 'MEMBER'): Promise<Team>;
-  removeMember(userId: string): Promise<Team>;
-  updateMemberRole(userId: string, newRole: 'LEADER' | 'MEMBER'): Promise<Team>;
-  updateResources(type: TeamResource['type'], used: number): Promise<Team>;
-  logActivity(activity: Omit<TeamActivity, 'timestamp'>): Promise<Team>;
 }
 
-const teamSchema = new Schema<Team>(
+export interface ITeamMethods {
+  addMember(userId: string, role?: 'LEADER' | 'MEMBER'): Promise<TeamDocument>;
+  removeMember(userId: string): Promise<TeamDocument>;
+  updateMemberRole(userId: string, newRole: 'LEADER' | 'MEMBER'): Promise<TeamDocument>;
+  updateResources(type: TeamResource['type'], used: number): Promise<TeamDocument>;
+  logActivity(activity: Omit<TeamActivity, 'timestamp'>): Promise<TeamDocument>;
+}
+
+export interface ITeamVirtuals {
+  memberCount: number;
+  isAtCapacity: boolean;
+}
+
+export type TeamDocument = Document<Types.ObjectId, {}, ITeam> & 
+  ITeam & 
+  ITeamMethods & 
+  ITeamVirtuals & {
+    _id: Types.ObjectId;
+  };
+
+export type TeamModel = Model<ITeam, {}, ITeamMethods>;
+
+const teamSchema = new Schema<ITeam, TeamModel>(
   {
     name: {
       type: String,
@@ -61,16 +74,12 @@ const teamSchema = new Schema<Team>(
       trim: true,
       minlength: 3,
       maxlength: 20,
-      validate: {
-        validator: function(v: string) {
-          return /^[a-zA-Z0-9-_]+$/.test(v);
-        },
-        message: 'Team name can only contain letters, numbers, hyphens, and underscores'
-      }
+      match: /^[a-zA-Z0-9-_]+$/
     },
     description: {
       type: String,
-      maxlength: 500,
+      trim: true,
+      maxlength: 500
     },
     members: [{
       user: {
@@ -101,14 +110,11 @@ const teamSchema = new Schema<Team>(
       },
       allocated: {
         type: Number,
-        required: true,
-        min: 0
+        required: true
       },
       used: {
         type: Number,
-        required: true,
-        default: 0,
-        min: 0
+        default: 0
       },
       lastUpdated: {
         type: Date,
@@ -126,9 +132,9 @@ const teamSchema = new Schema<Team>(
       },
       maxMembers: {
         type: Number,
-        default: 4,
         min: 2,
-        max: 4
+        max: 4,
+        default: 4
       },
       visibility: {
         type: String,
@@ -141,8 +147,7 @@ const teamSchema = new Schema<Team>(
       projectPath: String,
       storageUsed: {
         type: Number,
-        default: 0,
-        min: 0
+        default: 0
       }
     },
     activityLog: [{
@@ -161,41 +166,54 @@ const teamSchema = new Schema<Team>(
         default: Date.now
       },
       details: {
-        type: Schema.Types.Mixed
+        type: Map,
+        of: Schema.Types.Mixed,
+        default: () => new Map()
       }
     }]
   },
   {
-    timestamps: true
+    timestamps: true,
+    virtuals: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
 
 // Indexes
-teamSchema.index({ name: 1 });
+teamSchema.index({ name: 1 }, { unique: true });
 teamSchema.index({ 'members.user': 1 });
+teamSchema.index({ 'settings.visibility': 1 });
 teamSchema.index({ createdAt: -1 });
 
 // Virtual fields
-teamSchema.virtual('memberCount').get(function(this: Team) {
-  return this.members.filter((m: TeamMember) => m.status === 'ACTIVE').length;
+teamSchema.virtual('memberCount').get(function(this: TeamDocument) {
+  return this.members.filter(m => m.status === 'ACTIVE').length;
 });
 
-teamSchema.virtual('isAtCapacity').get(function(this: Team) {
+teamSchema.virtual('isAtCapacity').get(function(this: TeamDocument) {
   return this.memberCount >= this.settings.maxMembers;
 });
 
 // Methods
-teamSchema.methods.addMember = async function(userId: string, role: 'LEADER' | 'MEMBER' = 'MEMBER'): Promise<Team> {
+teamSchema.methods.addMember = async function(
+  userId: string,
+  role: 'LEADER' | 'MEMBER' = 'MEMBER'
+): Promise<TeamDocument> {
   if (this.isAtCapacity) {
     throw new Error('Team is at maximum capacity');
   }
 
-  if (this.members.some((m: TeamMember) => m.user.toString() === userId && m.status === 'ACTIVE')) {
-    throw new Error('User is already an active member of this team');
+  const existingMember = this.members.find(m => 
+    m.user.toString() === userId && m.status === 'ACTIVE'
+  );
+
+  if (existingMember) {
+    throw new Error('User is already an active member');
   }
 
   this.members.push({
-    user: userId,
+    user: new Types.ObjectId(userId),
     role,
     joinedAt: new Date(),
     status: 'ACTIVE'
@@ -203,46 +221,45 @@ teamSchema.methods.addMember = async function(userId: string, role: 'LEADER' | '
 
   await this.logActivity({
     type: 'MEMBER_JOINED',
-    user: userId,
+    user: new Types.ObjectId(userId),
     details: { role }
   });
 
   return this.save();
 };
 
-teamSchema.methods.removeMember = async function(userId: string): Promise<Team> {
-  const member = this.members.find((m: TeamMember) => m.user.toString() === userId && m.status === 'ACTIVE');
-  
-  if (!member) {
-    throw new Error('User is not an active member of this team');
-  }
+teamSchema.methods.removeMember = async function(
+  userId: string
+): Promise<TeamDocument> {
+  const member = this.members.find(m => 
+    m.user.toString() === userId && m.status === 'ACTIVE'
+  );
 
-  if (member.role === 'LEADER' && 
-      this.members.filter((m: TeamMember) => m.role === 'LEADER' && m.status === 'ACTIVE').length === 1) {
-    throw new Error('Cannot remove the last team leader');
+  if (!member) {
+    throw new Error('Member not found');
   }
 
   member.status = 'INACTIVE';
 
   await this.logActivity({
     type: 'MEMBER_LEFT',
-    user: userId,
-    details: { previousRole: member.role }
+    user: new Types.ObjectId(userId),
+    details: { role: member.role }
   });
 
   return this.save();
 };
 
-teamSchema.methods.updateMemberRole = async function(userId: string, newRole: 'LEADER' | 'MEMBER'): Promise<Team> {
-  const member = this.members.find((m: TeamMember) => m.user.toString() === userId && m.status === 'ACTIVE');
-  
-  if (!member) {
-    throw new Error('User is not an active member of this team');
-  }
+teamSchema.methods.updateMemberRole = async function(
+  userId: string,
+  newRole: 'LEADER' | 'MEMBER'
+): Promise<TeamDocument> {
+  const member = this.members.find(m => 
+    m.user.toString() === userId && m.status === 'ACTIVE'
+  );
 
-  if (newRole === 'MEMBER' && member.role === 'LEADER' && 
-      this.members.filter((m: TeamMember) => m.role === 'LEADER' && m.status === 'ACTIVE').length === 1) {
-    throw new Error('Cannot demote the last team leader');
+  if (!member) {
+    throw new Error('Member not found');
   }
 
   const oldRole = member.role;
@@ -250,22 +267,24 @@ teamSchema.methods.updateMemberRole = async function(userId: string, newRole: 'L
 
   await this.logActivity({
     type: 'ROLE_CHANGED',
-    user: userId,
+    user: new Types.ObjectId(userId),
     details: { oldRole, newRole }
   });
 
   return this.save();
 };
 
-teamSchema.methods.updateResources = async function(type: TeamResource['type'], used: number): Promise<Team> {
-  const resource = this.resources.find((r: TeamResource) => r.type === type);
-  
+teamSchema.methods.updateResources = async function(
+  type: TeamResource['type'],
+  used: number
+): Promise<TeamDocument> {
+  const resource = this.resources.find(r => r.type === type);
   if (!resource) {
-    throw new Error(`Resource type ${type} not found`);
+    throw new Error('Resource not found');
   }
 
   if (used > resource.allocated) {
-    throw new Error(`Resource usage exceeds allocation for ${type}`);
+    throw new Error('Resource usage exceeds allocation');
   }
 
   resource.used = used;
@@ -273,14 +292,16 @@ teamSchema.methods.updateResources = async function(type: TeamResource['type'], 
 
   await this.logActivity({
     type: 'RESOURCE_UPDATED',
-    user: this.members.find((m: TeamMember) => m.role === 'LEADER')?.user,
+    user: new Types.ObjectId(), // System update
     details: { resourceType: type, used }
   });
 
   return this.save();
 };
 
-teamSchema.methods.logActivity = async function(activity: Omit<TeamActivity, 'timestamp'>): Promise<Team> {
+teamSchema.methods.logActivity = async function(
+  activity: Omit<TeamActivity, 'timestamp'>
+): Promise<TeamDocument> {
   this.activityLog.push({
     ...activity,
     timestamp: new Date()
@@ -288,4 +309,5 @@ teamSchema.methods.logActivity = async function(activity: Omit<TeamActivity, 'ti
   return this.save();
 };
 
-export const TeamModel: Model<Team> = mongoose.models.Team || mongoose.model<Team>('Team', teamSchema); 
+export const TeamModel = (mongoose.models.Team as TeamModel) || 
+  mongoose.model<ITeam, TeamModel>('Team', teamSchema); 

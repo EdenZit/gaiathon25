@@ -18,7 +18,7 @@ export interface IUser {
 export interface IUserMethods {
   comparePassword(password: string): Promise<boolean>;
   generateAuthToken(): string;
-  toAuthUser(): AdapterUser;
+  toAuthUser(): Omit<AdapterUser, 'id'> & { id: string };
 }
 
 export type UserDocument = Document<Types.ObjectId, {}, IUser> & 
@@ -77,14 +77,15 @@ userSchema.methods.comparePassword = async function(password: string): Promise<b
   return bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.toAuthUser = function(): AdapterUser {
+userSchema.methods.toAuthUser = function(): Omit<AdapterUser, 'id'> & { id: string } {
   return {
     id: this._id.toString(),
     email: this.email,
     name: this.name,
     image: this.image,
     emailVerified: this.emailVerified,
-    role: this.role
+    role: this.role,
+    status: this.status
   };
 };
 
