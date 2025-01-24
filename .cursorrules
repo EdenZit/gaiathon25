@@ -65,7 +65,24 @@
             "npm": ">=9.0.0"
           }
         },
+        "api": {
+          "rest": {
+            "rateLimit": {
+              "window": 900000,
+              "max": 100
+            }
+          }
+        },
         "database": {
+          "cache": {
+            "type": "Redis",
+            "version": "7.x",
+            "config": {
+              "maxMemory": "2gb",
+              "evictionPolicy": "allkeys-lru",
+              "persistence": true
+            }
+          },
           "primary": {
             "type": "MongoDB Atlas",
             "version": "6.x",
@@ -94,7 +111,27 @@
                 "ipAccessList": true,
                 "privateEndpoint": false
               },
-              "security": {
+              "accessibility": {
+      "compliance": "WCAG2.1_AA",
+      "required": [
+        "keyboard-navigation",
+        "screen-reader",
+        "focus-management",
+        "aria-labels",
+        "color-contrast"
+      ],
+      "testing": {
+        "tools": [
+          "jest-axe",
+          "cypress-axe"
+        ],
+        "coverage": {
+          "required": true,
+          "minimum": 90
+        }
+      }
+    },
+    "security": {
                 "requireSSL": true,
                 "deleteProtection": true,
                 "encryptionAtRest": true
@@ -124,6 +161,102 @@
         }
       }
     },
+    "fileStructure": {
+      "rootDirectories": [
+        ".github",
+        "public",
+        "src",
+        "docker",
+        "scripts",
+        "tests"
+      ],
+      "srcStructure": {
+        "app": {
+          "required": true,
+          "structure": {
+            "dashboard": {
+              "required": true
+            },
+            "teams": {
+              "required": true
+            },
+            "[locale]": {
+              "directories": [
+                "(timeline)",
+                "(calendar)"
+              ]
+            }
+          }
+        },
+        "components": {
+          "required": true,
+          "categories": [
+            "common",
+            "layout",
+            "forms",
+            "dashboard",
+            "admin",
+            "profile",
+            "auth",
+            "marketing",
+            "navigation",
+            "footer",
+            "teams",
+            "projects",
+            "calendar",
+            "tracking",
+            "timeline",
+            "events",
+            "announcements",
+            "notifications"
+          ],
+          "naming": {
+            "pattern": "^[A-Z][a-zA-Z0-9]+$",
+            "test": "${name}.test.tsx"
+          }
+        },
+        "hooks": {
+          "required": true,
+          "naming": {
+            "pattern": "^use[A-Z][a-zA-Z0-9]+$",
+            "extension": ".ts"
+          }
+        },
+        "stores": {
+          "required": true,
+          "naming": {
+            "pattern": "^use[A-Z][a-zA-Z0-9]+Store$",
+            "extension": ".ts"
+          }
+        },
+        "styles": {
+          "required": true,
+          "files": [
+            "globals.css",
+            "variables.css"
+          ]
+        },
+        "types": {
+          "required": true,
+          "naming": {
+            "pattern": "^[A-Z][a-zA-Z0-9]+$",
+            "extension": ".ts"
+          }
+        }
+      },
+      "publicStructure": {
+        "required": true,
+        "directories": {
+          "images": {
+            "required": true,
+            "formats": ["svg", "png", "ico"]
+          },
+          "fonts": {
+            "required": true
+          }
+        }
+      }
+    },
     "performance": {
       "metrics": {
         "frontend": {
@@ -134,7 +267,8 @@
         },
         "backend": {
           "responseTime": "< 200ms",
-          "errorRate": "< 0.1%"
+          "errorRate": "< 0.1%",
+          "uptime": "> 99.9%"
         }
       },
       "optimization": {
@@ -145,7 +279,8 @@
         },
         "caching": {
           "static": true,
-          "ssr": true
+          "ssr": true,
+          "api": true
         }
       }
     },
@@ -278,92 +413,6 @@
         }
       }
     },
-    "fileStructure": {
-      "rootDirectories": [
-        ".github",
-        "public",
-        "src",
-        "docker",
-        "scripts",
-        "tests"
-      ],
-      "srcStructure": {
-        "app": {
-          "required": true,
-          "structure": {
-            "dashboard": {
-              "required": true
-            },
-            "teams": {
-              "required": true
-            }
-          }
-        },
-        "components": {
-          "required": true,
-          "categories": [
-            "common",
-            "layout",
-            "forms",
-            "dashboard",
-            "admin",
-            "profile",
-            "auth",
-            "marketing",
-            "navigation",
-            "footer",
-            "teams",
-            "projects",
-            "calendar",
-            "tracking"
-          ],
-          "naming": {
-            "pattern": "^[A-Z][a-zA-Z0-9]+$",
-            "test": "${name}.test.tsx"
-          }
-        },
-        "hooks": {
-          "required": true,
-          "naming": {
-            "pattern": "^use[A-Z][a-zA-Z0-9]+$",
-            "extension": ".ts"
-          }
-        },
-        "stores": {
-          "required": true,
-          "naming": {
-            "pattern": "^use[A-Z][a-zA-Z0-9]+Store$",
-            "extension": ".ts"
-          }
-        },
-        "styles": {
-          "required": true,
-          "files": [
-            "globals.css",
-            "variables.css"
-          ]
-        },
-        "types": {
-          "required": true,
-          "naming": {
-            "pattern": "^[A-Z][a-zA-Z0-9]+$",
-            "extension": ".ts"
-          }
-        }
-      },
-      "publicStructure": {
-        "required": true,
-        "directories": {
-          "images": {
-            "required": true,
-            "formats": ["svg", "png", "ico"]
-          },
-          "fonts": {
-            "required": true
-          }
-        }
-      }
-    },
     "security": {
       "authentication": {
         "required": [
@@ -371,9 +420,7 @@
           "jwt-tokens",
           "refresh-tokens",
           "csrf-protection",
-          "rate-limiting",
-          "role-based-access",
-          "permission-management"
+          "rate-limiting"
         ],
         "session": {
           "duration": 86400,
@@ -392,6 +439,16 @@
           "origins": ["allowed-domains.txt"],
           "methods": ["GET", "POST", "PUT", "DELETE"],
           "credentials": true
+        }
+      },
+      "dataProtection": {
+        "encryption": {
+          "algorithm": "AES-256-GCM",
+          "keyRotation": true
+        },
+        "storage": {
+          "secrets": "vault",
+          "logs": "encrypted"
         }
       }
     }
