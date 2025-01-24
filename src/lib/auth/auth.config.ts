@@ -1,4 +1,5 @@
 import NextAuth from 'next-auth';
+import type { AuthOptions } from 'next-auth';
 import type { Session } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import Google from 'next-auth/providers/google';
@@ -13,11 +14,17 @@ declare module 'next-auth' {
       role: string;
       email: string;
       name: string;
-      image?: string;
+      image: string | null;
     }
   }
 
-  interface User extends UserDocument {}
+  interface User {
+    id: string;
+    role: string;
+    email: string;
+    name: string;
+    image: string | null;
+  }
 }
 
 declare module 'next-auth/jwt' {
@@ -27,7 +34,7 @@ declare module 'next-auth/jwt' {
   }
 }
 
-const authConfig = {
+const authConfig: AuthOptions = {
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -65,14 +72,16 @@ const authConfig = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user: UserDocument | null }) {
-      if (user) {
-        token.id = user._id.toString();
-        token.role = user.role;
+    async jwt({ token, user, trigger }) {
+      if (trigger === 'signIn' && user) {
+        const userData = user as unknown as UserDocument;
+        const authUser = userData.toAuthUser();
+        token.id = authUser.id;
+        token.role = authUser.role;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
+    async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;

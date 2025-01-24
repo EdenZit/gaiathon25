@@ -1,5 +1,6 @@
 import { Schema, model, Document, Model, Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import type { AdapterUser } from 'next-auth/adapters';
 
 export interface IUser {
   email: string;
@@ -7,8 +8,8 @@ export interface IUser {
   name: string;
   role: 'USER' | 'ADMIN' | 'MODERATOR';
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
-  image?: string;
-  emailVerified?: Date;
+  image: string | null;
+  emailVerified: Date | null;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -17,6 +18,7 @@ export interface IUser {
 export interface IUserMethods {
   comparePassword(password: string): Promise<boolean>;
   generateAuthToken(): string;
+  toAuthUser(): AdapterUser;
 }
 
 export type UserDocument = Document<Types.ObjectId, {}, IUser> & 
@@ -56,8 +58,14 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       enum: ['ACTIVE', 'INACTIVE', 'PENDING'],
       default: 'PENDING'
     },
-    image: String,
-    emailVerified: Date,
+    image: {
+      type: String,
+      default: null
+    },
+    emailVerified: {
+      type: Date,
+      default: null
+    },
     lastLogin: Date
   },
   {
@@ -67,6 +75,17 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
 
 userSchema.methods.comparePassword = async function(password: string): Promise<boolean> {
   return bcrypt.compare(password, this.password);
+};
+
+userSchema.methods.toAuthUser = function(): AdapterUser {
+  return {
+    id: this._id.toString(),
+    email: this.email,
+    name: this.name,
+    image: this.image,
+    emailVerified: this.emailVerified,
+    role: this.role
+  };
 };
 
 userSchema.pre('save', async function(next) {
