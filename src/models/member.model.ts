@@ -1,11 +1,11 @@
-import mongoose, { Document, Model, Schema } from 'mongoose';
-import { User } from './user.model';
-import { Team } from './team.model';
-import { Project } from './project.model';
+import mongoose, { Document, Model, Schema, Types } from 'mongoose';
+import { type User } from './user.model';
+import { type Team } from './team.model';
+import { type Project } from './project.model';
 
 export interface MemberActivity {
   type: 'PROJECT_CONTRIBUTION' | 'TASK_COMPLETION' | 'CODE_REVIEW' | 'DOCUMENTATION' | 'MEETING_ATTENDANCE';
-  project?: Project['_id'];
+  project?: Types.ObjectId;
   timestamp: Date;
   details: {
     action: string;
@@ -32,17 +32,17 @@ export interface MemberPermission {
 export interface MemberInvitation {
   email: string;
   role: 'LEADER' | 'MEMBER';
-  team: Team['_id'];
-  invitedBy: User['_id'];
+  team: Types.ObjectId;
+  invitedBy: Types.ObjectId;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
   token: string;
   expiresAt: Date;
   metadata?: Record<string, any>;
 }
 
-export interface Member extends Document {
-  user: User['_id'];
-  team: Team['_id'];
+export interface IMember {
+  user: Types.ObjectId;
+  team: Types.ObjectId;
   role: 'LEADER' | 'MEMBER';
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   permissions: MemberPermission[];
@@ -61,23 +61,27 @@ export interface Member extends Document {
       metrics: 'PUBLIC' | 'TEAM' | 'PRIVATE';
     };
   };
-  joinedAt: Date;
   lastActive: Date;
-  
-  // Virtual fields
-  isOnline: boolean;
-  productivityScore: number;
-  collaborationScore: number;
-  
-  // Methods
-  recordActivity(activity: Omit<MemberActivity, 'timestamp'>): Promise<Member>;
-  updateMetrics(metrics: Omit<MemberMetrics, 'timestamp'>): Promise<Member>;
-  sendInvitation(invitation: Omit<MemberInvitation, 'status' | 'token' | 'expiresAt'>): Promise<MemberInvitation>;
-  updatePermissions(permissions: MemberPermission[]): Promise<Member>;
-  calculateScores(): { productivity: number; collaboration: number; quality: number };
+  joinedAt: Date;
 }
 
-const memberSchema = new Schema<Member>(
+export interface IMemberMethods {
+  sendInvitation(invitation: Omit<MemberInvitation, 'status' | 'token' | 'expiresAt'>): Promise<MemberInvitation>;
+  updatePermissions(permissions: MemberPermission[]): Promise<MemberDocument>;
+  recordActivity(activity: Omit<MemberActivity, 'timestamp'>): Promise<MemberDocument>;
+  updateMetrics(metrics: Omit<MemberMetrics, 'timestamp'>): Promise<MemberDocument>;
+  calculateScores(): { productivity: number; collaboration: number; quality: number; };
+}
+
+export type MemberDocument = Document<Types.ObjectId, {}, IMember> & 
+  IMember & 
+  IMemberMethods & {
+    _id: Types.ObjectId;
+  };
+
+export type MemberModel = Model<IMember, {}, IMemberMethods>;
+
+const memberSchema = new Schema<IMember, MemberModel, IMemberMethods>(
   {
     user: {
       type: Schema.Types.ObjectId,
@@ -97,7 +101,7 @@ const memberSchema = new Schema<Member>(
     status: {
       type: String,
       enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'],
-      default: 'ACTIVE'
+      default: 'INACTIVE'
     },
     permissions: [{
       resource: {
@@ -107,9 +111,14 @@ const memberSchema = new Schema<Member>(
       },
       actions: [{
         type: String,
-        enum: ['CREATE', 'READ', 'UPDATE', 'DELETE', 'MANAGE']
+        enum: ['CREATE', 'READ', 'UPDATE', 'DELETE', 'MANAGE'],
+        required: true
       }],
-      conditions: Schema.Types.Mixed
+      conditions: {
+        type: Map,
+        of: Schema.Types.Mixed,
+        default: () => new Map()
+      }
     }],
     activities: [{
       type: {
@@ -133,7 +142,11 @@ const memberSchema = new Schema<Member>(
           max: 10
         },
         duration: Number,
-        metadata: Schema.Types.Mixed
+        metadata: {
+          type: Map,
+          of: Schema.Types.Mixed,
+          default: () => new Map()
+        }
       }
     }],
     metrics: [{
@@ -142,10 +155,7 @@ const memberSchema = new Schema<Member>(
         enum: ['PRODUCTIVITY', 'COLLABORATION', 'QUALITY', 'ENGAGEMENT'],
         required: true
       },
-      value: {
-        type: Number,
-        required: true
-      },
+      value: Number,
       period: {
         type: String,
         enum: ['DAILY', 'WEEKLY', 'MONTHLY'],
@@ -155,14 +165,17 @@ const memberSchema = new Schema<Member>(
         type: Date,
         default: Date.now
       },
-      metadata: Schema.Types.Mixed
+      metadata: {
+        type: Map,
+        of: Schema.Types.Mixed,
+        default: () => new Map()
+      }
     }],
     invitations: [{
       email: {
         type: String,
         required: true,
-        lowercase: true,
-        trim: true
+        lowercase: true
       },
       role: {
         type: String,
@@ -184,15 +197,13 @@ const memberSchema = new Schema<Member>(
         enum: ['PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED'],
         default: 'PENDING'
       },
-      token: {
-        type: String,
-        required: true
-      },
-      expiresAt: {
-        type: Date,
-        required: true
-      },
-      metadata: Schema.Types.Mixed
+      token: String,
+      expiresAt: Date,
+      metadata: {
+        type: Map,
+        of: Schema.Types.Mixed,
+        default: () => new Map()
+      }
     }],
     preferences: {
       notifications: {
@@ -228,11 +239,11 @@ const memberSchema = new Schema<Member>(
         }
       }
     },
-    joinedAt: {
+    lastActive: {
       type: Date,
       default: Date.now
     },
-    lastActive: {
+    joinedAt: {
       type: Date,
       default: Date.now
     }
@@ -250,23 +261,43 @@ memberSchema.index({ lastActive: -1 });
 memberSchema.index({ role: 1, status: 1 });
 
 // Virtual fields
-memberSchema.virtual('isOnline').get(function(this: Member) {
+memberSchema.virtual('isOnline').get(function(this: MemberDocument) {
   const ONLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
   return (new Date().getTime() - this.lastActive.getTime()) < ONLINE_THRESHOLD;
 });
 
-memberSchema.virtual('productivityScore').get(function(this: Member) {
+memberSchema.virtual('productivityScore').get(function(this: MemberDocument) {
   return this.calculateScores().productivity;
 });
 
-memberSchema.virtual('collaborationScore').get(function(this: Member) {
+memberSchema.virtual('collaborationScore').get(function(this: MemberDocument) {
   return this.calculateScores().collaboration;
 });
 
 // Methods
+memberSchema.methods.sendInvitation = async function(
+  invitation: Omit<MemberInvitation, 'status' | 'token' | 'expiresAt'>
+): Promise<MemberInvitation> {
+  const token = Math.random().toString(36).substring(2, 15);
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+  const newInvitation: MemberInvitation = {
+    ...invitation,
+    status: 'PENDING',
+    token,
+    expiresAt
+  };
+
+  this.invitations.push(newInvitation);
+  await this.save();
+
+  return newInvitation;
+};
+
 memberSchema.methods.recordActivity = async function(
   activity: Omit<MemberActivity, 'timestamp'>
-): Promise<Member> {
+): Promise<MemberDocument> {
   this.activities.push({
     ...activity,
     timestamp: new Date()
@@ -277,7 +308,7 @@ memberSchema.methods.recordActivity = async function(
 
 memberSchema.methods.updateMetrics = async function(
   metrics: Omit<MemberMetrics, 'timestamp'>
-): Promise<Member> {
+): Promise<MemberDocument> {
   this.metrics.push({
     ...metrics,
     timestamp: new Date()
@@ -285,28 +316,9 @@ memberSchema.methods.updateMetrics = async function(
   return this.save();
 };
 
-memberSchema.methods.sendInvitation = async function(
-  invitation: Omit<MemberInvitation, 'status' | 'token' | 'expiresAt'>
-): Promise<MemberInvitation> {
-  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-  const newInvitation = {
-    ...invitation,
-    status: 'PENDING' as const,
-    token,
-    expiresAt
-  };
-
-  this.invitations.push(newInvitation);
-  await this.save();
-  return newInvitation;
-};
-
 memberSchema.methods.updatePermissions = async function(
   permissions: MemberPermission[]
-): Promise<Member> {
+): Promise<MemberDocument> {
   this.permissions = permissions;
   return this.save();
 };
@@ -318,37 +330,47 @@ memberSchema.methods.calculateScores = function(): {
 } {
   const now = new Date();
   const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+
+  // Get activities from last 30 days
   const recentActivities = this.activities.filter(
-    a => (now.getTime() - a.timestamp.getTime()) < THIRTY_DAYS
+    (a: MemberActivity) => (now.getTime() - a.timestamp.getTime()) < THIRTY_DAYS
   );
 
-  const productivity = recentActivities.reduce((sum, activity) => {
-    if (['PROJECT_CONTRIBUTION', 'TASK_COMPLETION'].includes(activity.type)) {
-      return sum + activity.details.impact;
-    }
-    return sum;
-  }, 0) / Math.max(1, recentActivities.length);
+  // Calculate productivity score
+  const productivityScore = recentActivities.reduce(
+    (sum: number, activity: MemberActivity) => 
+      activity.type === 'PROJECT_CONTRIBUTION' || activity.type === 'TASK_COMPLETION'
+        ? sum + activity.details.impact
+        : sum,
+    0
+  );
 
-  const collaboration = recentActivities.reduce((sum, activity) => {
-    if (['CODE_REVIEW', 'MEETING_ATTENDANCE'].includes(activity.type)) {
-      return sum + activity.details.impact;
-    }
-    return sum;
-  }, 0) / Math.max(1, recentActivities.length);
+  // Calculate collaboration score
+  const collaborationScore = recentActivities.reduce(
+    (sum: number, activity: MemberActivity) => 
+      activity.type === 'CODE_REVIEW' || activity.type === 'MEETING_ATTENDANCE'
+        ? sum + activity.details.impact
+        : sum,
+    0
+  );
 
-  const quality = recentActivities.reduce((sum, activity) => {
-    if (['CODE_REVIEW', 'DOCUMENTATION'].includes(activity.type)) {
-      return sum + activity.details.impact;
-    }
-    return sum;
-  }, 0) / Math.max(1, recentActivities.length);
+  // Calculate quality score
+  const qualityScore = recentActivities.reduce(
+    (sum: number, activity: MemberActivity) => 
+      activity.type === 'CODE_REVIEW' || activity.type === 'DOCUMENTATION'
+        ? sum + activity.details.impact
+        : sum,
+    0
+  );
+
+  const activityCount = recentActivities.length || 1;
 
   return {
-    productivity: Math.round(productivity * 10) / 10,
-    collaboration: Math.round(collaboration * 10) / 10,
-    quality: Math.round(quality * 10) / 10
+    productivity: Math.round((productivityScore / activityCount) * 10) / 10,
+    collaboration: Math.round((collaborationScore / activityCount) * 10) / 10,
+    quality: Math.round((qualityScore / activityCount) * 10) / 10
   };
 };
 
-export const MemberModel: Model<Member> = mongoose.models.Member || 
-  mongoose.model<Member>('Member', memberSchema); 
+export const MemberModel = (mongoose.models.Member as MemberModel) || 
+  mongoose.model<IMember, MemberModel>('Member', memberSchema); 

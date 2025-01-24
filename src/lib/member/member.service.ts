@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Member, MemberModel, MemberActivity, MemberMetrics, MemberPermission } from '@/models/member.model';
+import { MemberModel, MemberActivity, MemberMetrics, MemberPermission, MemberDocument } from '@/models/member.model';
 import { TeamService } from '@/lib/team/team.service';
 import { sendVerificationEmail } from '@/lib/email/email.service';
 import { Types, Document } from 'mongoose';
@@ -45,7 +45,7 @@ export class MemberService {
   static async inviteMember(
     userId: string,
     data: CreateInvitationInput
-  ): Promise<Member> {
+  ): Promise<MemberDocument> {
     const team = await TeamService.getTeam(data.teamId);
     if (!team) {
       throw new Error('Team not found');
@@ -93,7 +93,7 @@ export class MemberService {
     return member;
   }
 
-  static async acceptInvitation(token: string): Promise<Member> {
+  static async acceptInvitation(token: string): Promise<MemberDocument> {
     const member = await MemberModel.findOne({
       'invitations.token': token,
       'invitations.status': 'PENDING',
@@ -142,7 +142,7 @@ export class MemberService {
     memberId: string,
     userId: string,
     permissions: UpdatePermissionsInput
-  ): Promise<Member> {
+  ): Promise<MemberDocument> {
     const member = await MemberModel.findById(memberId).populate('team');
     if (!member) {
       throw new Error('Member not found');
@@ -175,7 +175,7 @@ export class MemberService {
   static async recordActivity(
     memberId: string,
     data: RecordActivityInput
-  ): Promise<Member> {
+  ): Promise<MemberDocument> {
     const member = await MemberModel.findById(memberId);
     if (!member) {
       throw new Error('Member not found');
@@ -194,7 +194,7 @@ export class MemberService {
   static async updateMetrics(
     memberId: string,
     data: UpdateMetricsInput
-  ): Promise<Member> {
+  ): Promise<MemberDocument> {
     const member = await MemberModel.findById(memberId);
     if (!member) {
       throw new Error('Member not found');
@@ -251,7 +251,7 @@ export class MemberService {
     period: 'DAILY' | 'WEEKLY' | 'MONTHLY' = 'WEEKLY'
   ): Promise<{
     members: Array<{
-      member: Member;
+      member: MemberDocument;
       analytics: {
         activities: MemberActivity[];
         metrics: MemberMetrics[];
